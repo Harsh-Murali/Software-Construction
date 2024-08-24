@@ -1,0 +1,86 @@
+#!/bin/dash
+
+# This program was written by Harsh Murali (z5361547)
+
+# Shows student assignment submission
+# Takes assignment name and zid
+# Non-positive integers give submissions in descending order of submission time
+
+# Check the number of arguments
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]
+then
+    echo "usage: give-fetch <assignment> <zid> [n]" >&2
+    exit 1
+fi
+
+ass_name="$1"
+zid="$2"
+submission_number="$3"
+
+# Validate the assignment name
+if ! echo "$ass_name" | grep -Eq "^[a-z][a-zA-Z0-9_]*$"
+then
+    echo "give-fetch: invalid assignment: $ass_name" >&2
+    exit 1
+fi
+
+# Validate the zid
+if ! echo "$zid" | grep -Eq '^z[0-9]{7}$'
+then
+    echo "give-fetch: invalid zid: $zid" >&2
+    exit 1
+fi
+
+assignment_dir=".give/$ass_name"
+if [ ! -d "$assignment_dir" ]
+then
+    echo "give-fetch: assignment $ass_name not found" >&2
+    exit 1
+fi
+
+# Check if the student directory exists
+student_dir="$assignment_dir/$zid"
+if [ ! -d "$student_dir" ]
+then
+    echo "give-fetch: no submissions for $zid in $ass_name" >&2
+    exit 1
+fi
+
+# Get the list of submissions
+submissions=$(find "$student_dir" -type f | sort)
+submission_count=$(echo "$submissions" | wc -l | tr -d ' ')
+
+# Determine the submission number to fetch
+if [ -z "$submission_number" ]
+then
+    # No submission number provided, fetch the last submission
+    fetch_num=$submission_count
+elif echo "$submission_number" | grep -Eq '^-?[0-9]+$'
+then
+    # Submission number provided
+    if [ "$submission_number" -eq 0 ]
+    then
+        fetch_num=$submission_count
+    elif [ "$submission_number" -gt 0 ]
+    then
+        fetch_num=$submission_number
+    else
+        fetch_num=$((submission_count + submission_number))
+    fi
+else
+    echo "give-fetch: invalid submission number: $submission_number" >&2
+    exit 1
+fi
+
+# Validate the fetch number
+if [ "$fetch_num" -le 0 ] || [ "$fetch_num" -gt "$submission_count" ]
+then
+    echo "give-fetch: submission $submission_number not found for $ass_name" >&2
+    exit 1
+fi
+
+# Get the submission file to fetch
+submission_file=$(echo "$submissions" | sed -n "${fetch_num}p")
+
+# Output the contents of the submission file
+cat "$submission_file"

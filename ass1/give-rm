@@ -1,0 +1,38 @@
+#!/bin/dash
+
+# This program was written by Harsh Murali (z5361547)
+
+# Deletes assignments and their directories if required
+
+# Check the number of arguments
+if [ "$#" -ne 1 ]
+then
+    echo "usage: give-rm <assignment>" >&2
+    exit 1
+fi
+
+ass_name="$1"
+
+# Check if the assignment name is valid
+if ! echo "$ass_name" | grep -Eq '^[a-z][a-zA-Z0-9_]*$'
+then
+    echo "give-rm: invalid assignment: $ass_name" >&2
+    exit 1
+fi
+
+# Check if the assignment directory exists
+if [ ! -d ".give/$ass_name" ]
+then
+    echo "give-rm: assignment $ass_name not found" >&2
+    exit 1
+fi
+
+# Remove the assignment directory
+rm -rf ".give/$ass_name"
+echo "assignment $ass_name removed"
+
+# Check if the .give directory is empty
+if [ -z "$(ls -A .give)" ]
+then
+    exit 1
+fi

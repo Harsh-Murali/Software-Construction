@@ -1,0 +1,34 @@
+#!/bin/dash
+
+# This program was written by Harsh Murali (z5361547)
+
+# Displays assignments and counts number of students that have submitted work for each
+
+# Check if the .give exists
+if [ ! -d ".give" ]
+then
+    echo "no assignments"
+    exit 0
+fi
+
+# Check if there are no assignments
+assignments_count=$(find .give -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+if [ "$assignments_count" -eq 0 ]
+then
+    echo "no assignments"
+    exit 0
+fi
+
+# Loop through each assignment
+for assignment in .give/*
+do
+    if [ -d "$assignment" ]
+    then
+        assignment_name=$(basename "$assignment")
+        
+        # Count the number of unique student IDs who have made submissions
+        student_count=$(find "$assignment" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+        
+        echo "assignment $assignment_name: submissions from $student_count student$( [ "$student_count" -ne 1 ] && echo "s" )"
+    fi
+done
