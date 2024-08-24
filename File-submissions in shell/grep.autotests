@@ -1,0 +1,7 @@
+
+# header comment
+
+label1|-i BIRD -c|bird\ncat\nbird\nfish\nbird\n|
+# middle comment
+label2|-i BIRD -c|bird\ncat\nbird\nfish\nbird\n\nfish\nbird\n|
+# last comment

@@ -1,0 +1,11 @@
+default|||
+check_case|0||
+ignore_case|0||c
+check_whitespace|1||
+ignore_whitespace|1||w
+check_blank_lines|2||
+ignore_blank_lines|2||b
+check_digits|3||
+ignore_digits|3||d
+check_bcw|4||
+ignore_bcw|4||cwb

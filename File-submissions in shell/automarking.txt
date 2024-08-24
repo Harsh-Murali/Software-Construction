@@ -1,0 +1,3 @@
+test1|arg1 arg2|input1\ninput2|bc|5
+test2|arg3 arg4||cd|10
+test3|arg5 arg6|input3\ninput4|bcd|15
