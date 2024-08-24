@@ -1,0 +1,36 @@
+#!/bin/dash
+
+directory=".pushy"
+IndexDirectory="$directory/index/files"
+StagingDirectory="$directory/staging"
+
+# Check if the .pushy directory exists
+if [ ! -d "$directory" ]
+then
+    echo "pushy-add: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+# Ensure the index directory exists
+[ ! -d "$IndexDirectory" ] && mkdir -p "$IndexDirectory"
+
+# Ensure the staging directory exists
+[ ! -d "$StagingDirectory" ] && mkdir -p "$StagingDirectory"
+
+# Processes files
+for currentFile in "$@"
+do
+    if [ -f "$currentFile" ]
+    then
+        # Copy file to index directory
+        cp "$currentFile" "$IndexDirectory/$(basename "$currentFile")"
+    elif [ -f "$StagingDirectory/$currentFile" ]
+    then
+        # Move file from staging to the main directory
+        mv "$StagingDirectory/$currentFile" "$directory/$(basename "$currentFile")"
+        exit 0
+    else
+        echo "pushy-add: error: can not open '$currentFile'"
+        exit 1
+    fi
+done

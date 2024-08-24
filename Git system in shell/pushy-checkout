@@ -1,0 +1,52 @@
+#!/bin/dash
+
+# If .pushy doesn't exist, an error is printed
+if [ ! -d ".pushy" ]
+then
+    echo "pushy-checkout: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+# Gets branch name from the first command line arugment
+branch="$1"
+# branches directory points to the .pushy/branches folder
+BranchDirectory=".pushy/branches"
+
+#prints error is branch is empty
+if [ -z "$branch" ]
+then
+    echo "Usage: pushy-checkout <branch-name>"
+    exit 1
+fi
+# Checks if the specified branch exists
+# Excludes checking for 'master'since it isn't in brances dir
+if [ ! -d "$BranchDirectory/$branch" ] && [ "$branch" != "master" ]
+then
+    echo "pushy-checkout: error: Branch '$branch' does not exist"
+    exit 1
+fi
+
+# Defines the directory for index files
+IndexDirectory=".pushy/index/files"
+# Loops through all files in the index and checks for potential overwrites
+for file in $(ls $IndexDirectory)
+do
+    # Checks if the file exists in the index and not in the branch that the user is trying to checkout
+    if test -f "$IndexDirectory/$file" && [ ! -f "$BranchDirectory/$branch/$file" ]
+    then
+        # Prints an error message
+        echo "pushy-checkout: error: Your changes to the following files would be overwritten by checkout:"
+        echo "$file"
+        exit 1
+    fi
+done
+
+# Stores the current branch name in a file to track currently checked-out branch
+echo "$branch" > ".pushy/curr_branch"
+CurrentCommit=$(readlink "$BranchDirectory/$branch")
+# Clears the working directory before switching branches
+rm -r *
+# Copies all files from the branch's current commit to the working directory
+cp -a "$CurrentCommit/." .
+# Prints message regarding branch being switched
+echo "Switched to branch '$branch'"

@@ -1,0 +1,39 @@
+#!/bin/dash
+
+# Checks existence of commit directories within .pushy
+if ! CommitDirectory=$(find ".pushy" -maxdepth 1 -type d -name 'commit_*')
+then
+    # Error message if .pushy doesn't exist
+    echo "pushy-log: error: pushy repository directory .pushy not found"
+    # Exit due to error
+    exit 1 
+fi
+
+# Check for any commits
+CommitDirectory=$(find ".pushy" -maxdepth 1 -type d -name 'commit_*')
+if [ -z "$CommitDirectory" ]
+then
+    # Inform user there are no commits
+    echo "No commits yet."
+    # Exits successfully
+    exit 0
+fi
+
+# Loops through commit directories
+for dir in $CommitDirectory
+do
+    # Gets commit number
+    CommitNumber="${dir##*/commit_}"
+    # Specifies path to commit message
+    CommitFileMessage=".pushy/commit_$CommitNumber/commit_message.txt"
+    
+    if [ -f "$CommitFileMessage" ]
+    then
+        # Reads commit message
+        CommitMessage=$(cat "$CommitFileMessage")
+        # Display commit number and message
+        echo "$CommitNumber $CommitMessage"  
+    fi
+# Sort commits in reverse order
+done | 
+sort -r -n -k1  

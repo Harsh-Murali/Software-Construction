@@ -1,0 +1,73 @@
+#!/bin/dash
+
+# Stores first argument as 'argument' in the form '<commit>:<filename>'
+argument="$1"
+# Extracts commit part from argument
+commit="${argument%:*}"
+# Extracts filename part from argument
+filename="${argument#*:}"
+
+# Checks if argument is empty and if so display usage and exit
+if [ -z "$argument" ]
+then
+    echo "usage: pushy-show <commit>:<filename>"
+    exit 1
+fi
+
+# Checks if .pushy directory exists and if not displays error and exit
+if [ ! -d ".pushy" ]
+then
+    echo "pushy-show: error: pushy repository .pushy .pushy not found"
+    exit 1
+fi
+
+# If the commit has string value zero it shows file from index
+# Or prints an error otherwise
+if [ -z "$commit" ]
+then    
+    if [ -f ".pushy/index/files/$filename" ]
+    then
+        cat ".pushy/index/files/$filename"
+    else
+        echo "pushy-show: error: '$filename' not found in index"
+        exit 1
+    fi
+else       
+    # If commit is empty it show file from index
+    # Or prints an error otherwise
+    if [ "$commit" = "" ]
+    then
+        if [ -f ".pushy/index/files/$filename" ]
+        then
+            cat ".pushy/index/files/$filename"
+        else
+            echo "pushy-show: error: '$filename' not found in index"
+            exit 1
+        fi
+    # If the commit directory exists it shows file from commit
+    # Or prints an error otherwise
+    elif [ -d ".pushy/commit_$commit" ]
+    then
+        if [ -f ".pushy/commit_$commit/$filename" ]
+        then
+            cat ".pushy/commit_$commit/$filename"
+        else
+            echo "pushy-show: error: '$filename' not found in commit $commit"
+            exit 1
+        fi
+    # This case handles for commit equals zero
+    elif [ "$commit" -eq "0" ]
+    then
+        if [ -f ".pushy/index/files/$filename" ]
+        then
+            cat ".pushy/index/files/$filename"
+        else
+            echo "pushy-show: error: '$filename' not found in commit $commit"
+            exit 1
+        fi
+    # Otherwise an unknown commit error is produced
+    else
+        echo "pushy-show: error: unknown commit '$commit'"
+        exit 1
+    fi
+fi

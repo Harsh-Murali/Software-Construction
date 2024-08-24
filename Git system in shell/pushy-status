@@ -1,0 +1,83 @@
+#!/bin/dash
+
+# Checks if the .pushy directory exists
+if [ ! -d .pushy ]
+then
+    # Prints and error
+    echo "pushy-status: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+# Defines the directory where index files are stored
+IndexDirectory=".pushy/index/files"
+# Finds the directory for the latest commit by sorting commit directories and choosing the last one
+CurrCommitDirectory=$(find .pushy/commit_* -maxdepth 0 | sort -V | tail -n 1)
+
+# Lists all files in the current working directory
+WorkingFiles=$(ls)
+# Lists all files currently indexed
+IndexFiles=$(ls $IndexDirectory 2>/dev/null)
+# Lists all files in the latest commit
+RepoFiles=$(ls "$CurrCommitDirectory" 2>/dev/null)
+
+# Combines all file lists and removes duplicates and gets a unified list of all relevant files
+AllFiles=$(echo "$WorkingFiles $IndexFiles $RepoFiles" | tr ' ' '\n' | sort -u)
+
+# This function determines and prints the status of a given file
+determine_status() {
+    file=$1
+    status=""
+
+    # Checks if the file is present in the working directory, index and repository
+    # prints yes, if these files are present
+    InsideWorking=$(echo "$WorkingFiles" | grep -w "$file" >/dev/null && echo "yes")
+    InsideIndex=$(echo "$IndexFiles" | grep -w "$file" >/dev/null && echo "yes")
+    InsideRepo=$(echo "$RepoFiles" | grep -w "$file" >/dev/null && echo "yes")
+
+    # Determines the file's status based off where it's found and whether it has been modified
+    if [ "$InsideWorking" ] && [ ! "$InsideIndex" ] && [ ! "$InsideRepo" ]
+    then
+        status="untracked"
+    elif [ "$InsideIndex" ] && [ ! "$InsideRepo" ]
+    then
+        # The file is in the index and not in the repository
+        # Checks if the file has been deleted after being added to the index
+        if [ ! "$InsideWorking" ]
+        then
+            status="added to index, file deleted"
+        else
+            # If the file content is the same as in the index it is added to the index
+            if diff -q "$file" "$IndexDirectory/$file" >/dev/null
+            then
+                status="added to index"
+            else
+                status="added to index, file changed"
+            fi
+        fi
+    elif [ "$InsideWorking" ] && [ "$InsideIndex" ] && [ "$InsideRepo" ]
+    then
+        # Checks if the file has changes staged for commit
+        if ! diff -q "$file" "$IndexDirectory/$file" >/dev/null
+        then
+            status="file changed, changes staged for commit"
+        # Checks if the file has changes not staged for commit
+        elif ! diff -q "$IndexDirectory/$file" "$CurrCommitDirectory/$file" >/dev/null
+        then
+            status="file changed, changes not staged for commit"
+        else
+            status="same as repo"
+        fi
+    fi
+
+    # Prints the file and its status if the status has been determined
+    if [ -n "$status" ]
+    then
+        echo "$file - $status"
+    fi
+}
+
+# Goes through all unique files and determines and prints their status
+for file in $AllFiles
+do
+    determine_status "$file"
+done

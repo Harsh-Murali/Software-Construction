@@ -1,0 +1,78 @@
+#!/bin/dash
+
+# branches directory points to the .pushy/branches folder
+BranchDirectory=".pushy/branches"
+
+# If .pushy doesn't exist, an error is printed
+if [ ! -d .pushy ]
+then
+    echo "pushy-branch: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+# Creates the branches directory if it doesn't exist
+if [ ! -d "$BranchDirectory" ]
+then
+    mkdir -p "$BranchDirectory"
+fi
+
+# Prevents branch operations if no commits exist within the repo
+if [ -z "$(find .pushy/commit_* -maxdepth 0 2>/dev/null)" ]
+then
+    echo "pushy-branch: error: this command can not be run until after the first commit"
+    exit 1
+fi
+
+# Cheks the first argument is -f
+if [ "$1" = "-d" ]
+then
+    # Ensures a branch name is specified for deletion
+    if [ -z "$2" ]
+    then
+        echo "pushy-branch: error: branch name required for deletion"
+        exit 1
+    elif [ "$2" = "master" ]
+    then
+        # This prevents the deletion of the master branch
+        echo "pushy-branch: error: can not delete branch 'master': default branch"
+        exit 1
+    elif [ ! -d "$BranchDirectory/$2" ]
+    then
+        # This handles attempts to delete non-existent branches
+        echo "pushy-branch: error: branch '$2' doesn't exist"
+        exit 1
+    else
+        # Then we delete the specified branch directory
+        rm -r "$BranchDirectory/$2"
+        echo "Deleted branch '$2'"
+    fi
+elif [ -z "$1" ]
+then
+    # Lists all existing branches
+    if [ -d "$BranchDirectory" ]
+    then
+        branches=$(ls "$BranchDirectory")
+        # Makes sure that master is always listed among the branches
+        echo "master\n$branches" | sort -u
+    fi
+else
+    # Handles the creation of a new branch
+    if [ "$1" = "master" ]
+    then
+        # Stops the creation of a master branch if it already exists
+        echo "pushy-branch: error: branch 'master' already exists"
+        exit 1
+    elif [ -d "$BranchDirectory/$1" ]
+    then
+        # Prevents re-creation of a pre-existing branch
+        echo "pushy-branch: error: branch '$1' already exists"
+        exit 1
+    else
+        # Copies the current index into a new branch directory
+        if ! cp -r .pushy/index "$BranchDirectory/$1"
+        then
+            echo "pushy-branch: error: could not create branch '$1'"
+            exit 1
+        fi
+    fi
+fi

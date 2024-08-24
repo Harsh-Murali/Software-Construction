@@ -1,0 +1,139 @@
+#!/bin/dash
+
+adding() {
+    local directory=".pushy"
+    local IndexDirectory="$directory/index/files"
+    local StagingDirectory="$directory/staging"
+
+    if [ ! -d "$directory" ]
+    then
+        echo "pushy-add: error: pushy repository directory .pushy not found"
+        exit 1
+    fi
+
+    [ ! -d "$IndexDirectory" ] && mkdir -p "$IndexDirectory"
+    [ ! -d "$StagingDirectory" ] && mkdir -p "$StagingDirectory"
+
+    for currentFile in "$@"
+    do
+        if [ -f "$currentFile" ]
+        then
+            cp "$currentFile" "$IndexDirectory/$(basename "$currentFile")"
+        elif [ -f "$StagingDirectory/$currentFile" ]
+        then
+            mv "$StagingDirectory/$currentFile" "$directory/$(basename "$currentFile")"
+            exit 0
+        else
+            echo "pushy-add: error: cannot open '$currentFile'"
+            exit 1
+        fi
+    done
+}
+
+# Initiates variables
+directory=".pushy"
+commitMsg=""
+autoAdd=false
+
+# Goes through command-line arguments
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+        -a) 
+        autoAdd=true 
+        ;;
+        -m) 
+        shift 
+        commitMsg="$1" 
+        ;;
+        *) 
+        echo "usage: pushy-commit [-a] -m commit-message"
+        exit 1 
+        ;;
+    esac
+    shift
+done
+
+# Ensure the repo directory exists
+if [ ! -d "$directory" ]
+then
+    echo "pushy-commit: error: pushy repository directory $directory not found"
+    exit 1
+fi
+
+# Checks for empty commit message
+if [ -z "$commitMsg" ]
+then
+    echo "usage: pushy-commit [-a] -m commit-message"
+    exit 1
+fi
+
+# Generates a new commit number based off existing commits
+if [ -d "$directory/commit_0" ]
+then
+    lastCommit=$(find "$directory" -type d -name 'commit_*' | grep -o '[0-9]*' | sort -n | tail -1)
+    commitNumber=$((lastCommit + 1))
+else
+    commitNumber=0
+fi
+
+# Automatically adds files to the commit
+if $autoAdd
+then
+    for file in $(ls "$directory/index/files")
+    do
+        adding "$file"
+    done
+fi
+
+# Creates a new commit directory
+mkdir -p "$directory/commit_$commitNumber"
+
+# Checks for differences and exits if there are none to commit
+hasDifferences=0
+prevCommitDir="$directory/commit_$((commitNumber - 1))"
+if [ -d "$prevCommitDir" ]
+then
+    for file in "$directory/index/files/"*
+    do
+        fileName=$(basename "$file")
+        if [ -f "$prevCommitDir/$fileName" ]
+        then
+            if ! diff "$file" "$prevCommitDir/$fileName" > /dev/null 2>&1
+            then
+                hasDifferences=1
+                break
+            fi
+        else
+            hasDifferences=1
+            break
+        fi
+    done
+else
+    hasDifferences=1
+fi
+
+# If no differences then there is nothing to commit
+if [ $hasDifferences -eq 0 ]
+then
+    echo "nothing to commit"
+    exit 0
+fi
+
+# Copies index files to the new commit directory
+for item in "$directory/index/files/"*
+do
+    if [ -f "$item" ]
+    then
+        cp -n "$item" "$directory/commit_$commitNumber"
+    fi
+done
+
+# Saves the commit message to a file within the commit directory
+echo "$commitMsg" > "$directory/commit_$commitNumber/commit_message.txt"
+
+# Prints successful commit message
+echo "Committed as commit $commitNumber"
+
+
+

@@ -1,0 +1,22 @@
+#!/bin/dash
+
+# Attempts to create the .pushy directory
+if mkdir ".pushy" 2>/dev/null
+then
+    # Prints a success message if .pushy is created
+    echo "Initialized empty pushy repository in .pushy"
+    # Creates the index directory within .pushy
+    mkdir -p .pushy/index/
+else
+    # If the directory creation failed, check if .pushy already exists
+    if [ -d ".pushy" ]
+    then
+        # Prints an error message if .pushy already exists
+        echo "pushy-init: error: .pushy already exists"
+    else
+        # Prints an error message if .pushy could not be created for a different reason
+        echo "pushy-init: error: cannot create .pushy"
+    fi
+    # Exits with an error status
+    exit 1
+fi

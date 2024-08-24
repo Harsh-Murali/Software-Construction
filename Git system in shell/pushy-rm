@@ -1,0 +1,97 @@
+#!/bin/dash
+
+# Checks if .pushy directory exists
+if ! [ -d .pushy ]
+then
+    echo "pushy-rm: error: pushy repository directory .pushy not found"
+    exit 1
+fi
+
+# Defines the index directory path
+IndexDirectory=".pushy/index/files"
+# Determines the most recent commit directory
+CommitDirectory=$(find .pushy/commit_* -maxdepth 0 | sort | tail -n 1)
+
+# Initialises flags for --force and --cached options
+force=0
+cached=0
+# Initialises an empty string to get filenames
+files=""
+
+# Loops over command line arguments
+while [ $# -gt 0 ]
+do
+    case "$1" in
+        # If --force is specified
+        --force)
+            force=1
+            # Move to next argument
+            shift
+            ;;
+        # If --cached is specified
+        --cached)  
+            cached=1
+            # Move to next argument
+            shift  
+            ;;
+        # For any other argument, treat it as a filename
+        *)  
+            files="$files $1"
+            # Move to next argument
+            shift  
+            ;;
+    esac
+done
+
+# Defines a function to print error messages
+PrintError() {
+    file="$1"
+# Determines the state of the file across different locations provides appropriate error messages
+# First it checks if the file exists in both the working directory and index and if their contents differ
+if [ -f "$file" ] && [ -f "$IndexDirectory/$file" ] && ! diff -q "$file" "$IndexDirectory/$file" > /dev/null
+then
+    # Print an error
+    echo "pushy-rm: error: '$file' in the repository is different to the working file"
+# Next if checks if the file exists in both the index and the most recent commit and their contents differ
+elif [ -f "$IndexDirectory/$file" ] && [ -f "$CommitDirectory/$file" ] && ! diff -q "$IndexDirectory/$file" "$CommitDirectory/$file" > /dev/null
+then
+    # Print an error
+    echo "pushy-rm: error: '$file' in index is different to both the working file and the repository"
+# Then it checks if the file exists in the index but not in the working directory
+elif [ -f "$IndexDirectory/$file" ] && ! [ -f "$file" ]
+then
+    # Print an error
+    echo "pushy-rm: error: '$file' has staged changes in the index"
+# Finally if none of the above conditions are met it means the file isn't tracked in the repository at all
+else
+    # Print an error
+    echo "pushy-rm: error: '$file' is not in the pushy repository"
+fi
+}
+
+# Goes through each file in the command line
+for file in $files
+do
+    if [ "$cached" -eq 1 ]
+    then
+        # Handles --cached by removing files from index if it exists
+        if [ -f "$IndexDirectory/$file" ]
+        then
+            rm -f "$IndexDirectory/$file"
+        else
+            PrintError "$file"
+        fi
+    else
+        # Handle the default case by Removing files from index and possibly working directory
+        if [ -f "$IndexDirectory/$file" ]
+        then
+            rm -f "$IndexDirectory/$file"
+            # If --force isn't used, it prints an error for file discrepancies
+            [ "$force" -eq 0 ] && [ -f "$file" ] && PrintError "$file"
+            # If --force is used, it also then removes the file from the working directory
+            [ "$force" -eq 1 ] && rm -f "$file"
+        else
+            PrintError "$file"
+        fi
+    fi
+done
