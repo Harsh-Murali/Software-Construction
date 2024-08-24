@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+
+import os
+from pathlib import Path
+from filecmp import cmp
+
+# This program was written by Harsh Murali (z5361547)
+
+# This script shows the status of files in 
+# working directory, index, and last commit
+# then indicates their state
+
+# Check if .grip exists
+if not Path('.grip').is_dir():
+    print("grip-status: error: grip repository directory .grip not found")
+    exit(1)
+
+IndexDirectory = Path('.grip/index/files')
+
+# Sorts directories and chooses last one
+commit_dirs = sorted(Path('.grip').glob('commit_*'), key=lambda x: x.name)
+CurrCommitDirectory = commit_dirs[-1] if commit_dirs else None
+
+# Lists files in working directory
+WorkingFiles = [Path(f) for f in os.listdir() if os.path.isfile(f)]
+# Lists indexed files
+IndexFiles = list(IndexDirectory.iterdir()) if IndexDirectory.exists() else []
+# Lists files in last commit
+RepoFiles = list(CurrCommitDirectory.iterdir()) if CurrCommitDirectory else []
+
+# Combines file lists
+# Remove duplicates
+# Gets list of relevant files
+AllFiles = sorted(set([f.name for f in WorkingFiles + IndexFiles + RepoFiles if f.name != "commit_message.txt"]))
+
+# Prints status of given file
+def find_status(file):
+    status = ""
+
+    # Checks if the file exists in working directory, index, and repo
+    InsideWorking = file in [f.name for f in WorkingFiles]
+    InsideIndex = file in [f.name for f in IndexFiles]
+    InsideRepo = file in [f.name for f in RepoFiles]
+
+    # Determine the file status
+    if InsideWorking and not InsideIndex and not InsideRepo:
+        status = "untracked"
+    elif InsideIndex and not InsideRepo:
+        if not InsideWorking:
+            status = "added to index, file deleted"
+        else:
+            index_file = IndexDirectory / file
+            working_file = Path(file)
+            if index_file.exists() and cmp(working_file, index_file, shallow=False):
+                status = "added to index"
+            else:
+                status = "added to index, file changed"
+    elif InsideWorking and InsideIndex and InsideRepo:
+        index_file = IndexDirectory / file
+        repo_file = CurrCommitDirectory / file
+        working_file = Path(file)
+        if index_file.exists() and cmp(working_file, index_file, shallow=False):
+            if repo_file.exists() and cmp(index_file, repo_file, shallow=False):
+                status = "same as repo"
+            else:
+                status = "file changed, changes staged for commit"
+        else:
+            if repo_file.exists() and not cmp(index_file, repo_file, shallow=False):
+                status = "file changed, different changes staged for commit"
+            else:
+                status = "file changed, changes not staged for commit"
+    elif not InsideWorking and InsideIndex and InsideRepo:
+        status = "file deleted"
+    elif not InsideWorking and InsideRepo:
+        status = "file deleted, deleted from index"
+
+    # Print file and its status
+    if status:
+        print(f"{file} - {status}")
+
+for file in AllFiles:
+    find_status(file)

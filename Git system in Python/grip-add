@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+
+
+
+# This program was written by Harsh Murali (z5361547)
+
+# This script validates filenames 
+# It adds files to an index under .grip
+
+
+import os
+import sys
+import shutil
+import re
+
+directory = ".grip"
+index_directory = os.path.join(directory, "index", "files")
+staging_directory = os.path.join(directory, "staging")
+
+def valid(filename):
+    # Regex to ensure filenames are valid
+    return re.match(r'^[a-zA-Z0-9]*[A-Za-z0-9._-]+$', filename) is not None
+
+def main(files):
+    # Check if .grip exists
+    if not os.path.isdir(directory):
+        print("grip-add: error: grip repository directory .grip not found")
+        sys.exit(1)
+
+    # Check if index exists
+    if not os.path.isdir(index_directory):
+        os.makedirs(index_directory)
+
+    # Check if staging directory exists
+    if not os.path.isdir(staging_directory):
+        os.makedirs(staging_directory)
+
+    for current_file in files:
+        if not valid(current_file):
+            print(f"grip-add: error: invalid filename '{current_file}'")
+            continue
+
+        src_path = current_file
+        dest_path = os.path.join(index_directory, os.path.basename(current_file))
+
+        if os.path.isfile(src_path):
+            # Copies file to index
+            if os.path.abspath(src_path) != os.path.abspath(dest_path):
+                try:
+                    shutil.copy(src_path, dest_path)
+                except Exception as e:
+                    print(f"Error copying file {src_path} to {dest_path}: {e}")
+        else:
+            if os.path.isfile(dest_path):
+                os.remove(dest_path)
+            else:
+                print(f"grip-add: error: can not open '{current_file}'")
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

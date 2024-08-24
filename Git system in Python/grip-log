@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+import os, sys, re, shutil
+
+# This program was written by Harsh Murali (z5361547)
+
+# This script displays a log of all commits made in the repository
+# It lists them in reverse order
+
+def grip_log():
+    directory = ".grip"
+    
+    # Gets a list of all commit directories in .grip
+    commit_dirs = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d)) and d.startswith('commit_')]
+    
+    # Check for any commits
+    if not commit_dirs:
+        print("grip-log: error: grip repository directory .grip not found")
+        print("No commits yet.")
+        return
+    
+    commits = []
+    
+    # Collecst commit messages and numbers
+    for dir in commit_dirs:
+        commit_num = dir.split('_')[1]
+        commit_message_path = os.path.join(directory, dir, "commit_message.txt")
+        
+        if os.path.isfile(commit_message_path):
+            with open(commit_message_path, 'r') as file:
+                commit_message = file.read().strip()
+            commits.append((int(commit_num), commit_message))
+
+    # Sorts by descending commit number
+    commits.sort(reverse=True, key=lambda x: x[0])
+    
+    # Print out commit number and message
+    for commit in commits:
+        print(f"{commit[0]} {commit[1]}")
+
+if __name__ == "__main__":
+    grip_log()

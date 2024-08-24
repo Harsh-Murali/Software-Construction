@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+
+# This program was written by Harsh Murali (z5361547)
+
+# This script initialises a new Grip repository and makes directories and a branch
+
+def main():
+    try:
+        # Makes the .grip directory
+        os.mkdir(".grip")
+        print("Initialized empty grip repository in .grip")
+        
+        # Makes the index directory
+        os.makedirs(".grip/index/", exist_ok=True)
+        
+        # Initialises the default branch and makes HEAD to point to it
+        branches_dir = os.path.join(".grip", "branches")
+        default_branch = "trunk"
+        os.makedirs(os.path.join(branches_dir, default_branch, "index/files"))
+        
+        # Write the branch name to HEAD
+        with open(os.path.join(".grip", "HEAD"), 'w') as head_file:
+            head_file.write(default_branch)
+
+    except FileExistsError:
+        # Gives an error if .grip directory already exists
+        if os.path.isdir(".grip"):
+            print("grip-init: error: .grip already exists")
+        else:
+            print("grip-init: error: cannot create .grip")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

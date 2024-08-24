@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import shutil
+import filecmp
+
+# This program was written by Harsh Murali (z5361547)
+
+# This script removes files from the index and working directory 
+# It can also force the removal or keep files only in index
+
+def print_error(message):
+    # Prints error to standard error 
+    print(message, file=sys.stderr)
+
+def difference(file1, file2):
+    # Compares two files
+    if not os.path.exists(file1) or not os.path.exists(file2):
+        return True
+    return not filecmp.cmp(file1, file2, shallow=False)
+
+repo_dir = ".grip"
+index_dir = os.path.join(repo_dir, "index", "files")
+
+# Check if the .grip exists
+if not os.path.isdir(repo_dir):
+    print_error(f"{sys.argv[0]}: error: repository directory {repo_dir} not found")
+    sys.exit(1)
+
+# Gets the most recent commit directory
+commit_dirs = [int(name.split('_')[1]) for name in os.listdir(repo_dir) if name.startswith('commit_')]
+latest_commit_dir = os.path.join(repo_dir, f"commit_{max(commit_dirs)}") if commit_dirs else None
+
+# Force and cached flags
+force = "--force" in sys.argv
+cached = "--cached" in sys.argv
+files = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
+
+# Processes each file based off command-line arguments
+for file in files:
+    index_file_path = os.path.join(index_dir, file)
+    commit_file_path = os.path.join(latest_commit_dir, file) if latest_commit_dir else None
+    working_file_path = file
+
+    if cached:
+        # Removes files from index
+        if os.path.isfile(index_file_path):
+            if latest_commit_dir and os.path.isfile(commit_file_path):
+                if difference(index_file_path, commit_file_path) and difference(index_file_path, working_file_path):
+                    if not force:
+                        print_error(f"{sys.argv[0]}: error: '{file}' in index is different to both the working file and the repository")
+                        continue
+            os.remove(index_file_path)
+        else:
+            print_error(f"{sys.argv[0]}: error: '{file}' is not in the grip repository")
+            if not force:
+                continue
+    else:
+        # Removes files from index and working directory
+        if os.path.isfile(index_file_path):
+            if latest_commit_dir and os.path.isfile(commit_file_path):
+                if difference(index_file_path, commit_file_path):
+                    if difference(index_file_path, working_file_path):
+                        print_error(f"{sys.argv[0]}: error: '{file}' in index is different to both the working file and the repository")
+                        if not force:
+                            continue
+                    else:
+                        print_error(f"{sys.argv[0]}: error: '{file}' has staged changes in the index")
+                        if not force:
+                            continue
+                elif difference(working_file_path, commit_file_path):
+                    print_error(f"{sys.argv[0]}: error: '{file}' in the repository is different to the working file")
+                    if not force:
+                        continue
+                os.remove(index_file_path)
+                os.remove(working_file_path)
+            else:
+                print_error(f"{sys.argv[0]}: error: '{file}' has staged changes in the index")
+                if not force:
+                    continue
+        else:
+            if os.path.isfile(working_file_path):
+                if latest_commit_dir and not os.path.isfile(commit_file_path):
+                    print_error(f"{sys.argv[0]}: error: '{file}' is not in the grip repository")
+                    if not force:
+                        continue
+                # Removes file only from working directory if it isn't in the index
+                os.remove(working_file_path)
+            else:
+                print_error(f"{sys.argv[0]}: error: '{file}' is not in the grip repository")
+                if not force:
+                    continue
+
+    # Makes sure force doesn't delete important stuff
+    if force:
+        file_exists_in_repo = os.path.isfile(index_file_path) or os.path.isfile(working_file_path)
+        if not file_exists_in_repo:
+            print_error(f"{sys.argv[0]}: error: '{file}' is not in the grip repository")
+        else:
+            if os.path.isfile(index_file_path):
+                os.remove(index_file_path)
+            if os.path.isfile(working_file_path):
+                os.remove(working_file_path)

@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import shutil
+
+# This program was written by Harsh Murali (z5361547)
+
+# This script stages modified files
+# then creates a new commit with a message.
+
+def difference(file1, file2):
+    # Compares contents of two files
+    if not os.path.exists(file1) or not os.path.exists(file2):
+        return True
+    with open(file1, 'rb') as f1, open(file2, 'rb') as f2:
+        return f1.read() != f2.read()
+
+def staging():
+    # Stages modified files by copying them to index directory
+    directory = ".grip"
+    index_directory = os.path.join(directory, "index", "files")
+
+    # Goes through files in current directory and subdirectories
+    for root, _, files in os.walk("."):
+        if ".grip" in root.split(os.sep):
+            continue
+        
+        for file in files:
+            file_path = os.path.join(root, file)
+            index_file_path = os.path.join(index_directory, os.path.relpath(file_path, "."))
+
+            # Copies new or modified files to the index
+            if not os.path.exists(index_file_path) or difference(file_path, index_file_path):
+                if not os.path.exists(os.path.dirname(index_file_path)):
+                    os.makedirs(os.path.dirname(index_file_path))
+                shutil.copy(file_path, index_file_path)
+
+def grip_commit(args):
+    directory = ".grip"
+    commit_msg = ""
+    auto_add = False
+
+    # Goes through commit options and messages
+    while args:
+        arg = args.pop(0)
+        if arg == '-a':
+            auto_add = True
+        elif arg == '-m':
+            if args:
+                commit_msg = args.pop(0)
+            else:
+                print("usage: grip-commit [-a] -m commit-message")
+                sys.exit(1)
+        else:
+            print("usage: grip-commit [-a] -m commit-message")
+            sys.exit(1)
+
+    # Checks if .grip exists
+    if not os.path.isdir(directory):
+        print(f"grip-commit: error: grip repository directory {directory} not found")
+        sys.exit(1)
+
+    # Sees if commit message is provided
+    if not commit_msg:
+        print("usage: grip-commit [-a] -m commit-message")
+        sys.exit(1)
+
+    # Stages all files if -a is used
+    if auto_add:
+        staging()
+
+    commit_number = 0
+    has_differences = False
+    prev_commit_dir = None
+
+    # Makes new commit number based of previous commit numbers
+    if os.path.isdir(os.path.join(directory, "commit_0")):
+        commit_dirs = [int(name.split('_')[1]) for name in os.listdir(directory) if name.startswith('commit_')]
+        commit_number = max(commit_dirs) + 1
+        prev_commit_dir = os.path.join(directory, f"commit_{commit_number - 1}")
+
+    # Check for differences between current index and previous commit
+    current_files = os.listdir(os.path.join(directory, "index", "files"))
+    if prev_commit_dir:
+        prev_files = os.listdir(prev_commit_dir)
+
+        for file in current_files:
+            current_file_path = os.path.join(directory, "index", "files", file)
+            prev_file_path = os.path.join(prev_commit_dir, file)
+            if not os.path.exists(prev_file_path) or difference(current_file_path, prev_file_path):
+                has_differences = True
+                break
+
+        for file in prev_files:
+            if file == 'commit_message.txt':
+                continue
+            current_file_path = os.path.join(directory, "index", "files", file)
+            if not os.path.exists(current_file_path):
+                has_differences = True
+                break
+    else:
+        has_differences = True
+
+    # Exits without making a commit
+    if not has_differences:
+        print("nothing to commit")
+        sys.exit(0)
+
+    # Makes a new commit directory and copies files from index
+    new_commit_dir = os.path.join(directory, f"commit_{commit_number}")
+    os.makedirs(new_commit_dir)
+
+    for item in current_files:
+        item_path = os.path.join(directory, "index", "files", item)
+        if os.path.isfile(item_path):
+            shutil.copy(item_path, new_commit_dir)
+
+    # Saves message in new directory
+    with open(os.path.join(new_commit_dir, "commit_message.txt"), 'w') as f:
+        f.write(commit_msg)
+
+    print(f"Committed as commit {commit_number}")
+
+if __name__ == "__main__":
+    grip_commit(sys.argv[1:])

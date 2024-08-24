@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+
+import sys, re, shutil, os
+
+# This program was written by Harsh Murali (z5361547)
+
+# This script shows contents of a file from a commit 
+# or from index if no commit is specified
+
+def grip_show(argument):
+    commit, filename = argument.split(':')
+    
+    # Print error is format is wrong
+    if not argument:
+        print("usage: grip-show <commit>:<filename>")
+        sys.exit(1)
+    
+    # Checks if .grip exists
+    if not os.path.isdir(".grip"):
+        print("grip-show: error: grip repository .grip not found")
+        sys.exit(1)
+        
+    # If commit is empty, show file from index
+    if commit == "":
+        filepath = os.path.join(".grip", "index", "files", filename)
+        if os.path.isfile(filepath):
+            with open(filepath, 'r') as file:
+                sys.stdout.write(file.read())
+        else:
+            print(f"grip-show: error: '{filename}' not found in index")
+            sys.exit(1)
+    
+    # If a commit is given then show that file from the commit
+    elif os.path.isdir(os.path.join(".grip", f"commit_{commit}")):
+        filepath = os.path.join(".grip", f"commit_{commit}", filename)
+        if os.path.isfile(filepath):
+            with open(filepath, 'r') as file:
+                sys.stdout.write(file.read())
+        else:
+            print(f"grip-show: error: '{filename}' not found in commit {commit}")
+            sys.exit(1)
+    
+    # Checks the case where commit is 0
+    elif commit == "0":
+        filepath = os.path.join(".grip", "index", "files", filename)
+        if os.path.isfile(filepath):
+            with open(filepath, 'r') as file:
+                sys.stdout.write(file.read())
+        else:
+            print(f"grip-show: error: '{filename}' not found in commit {commit}")
+            sys.exit(1)
+    
+    # Print an error if commit doesn't exist
+    else:
+        print(f"grip-show: error: unknown commit '{commit}'")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    # Checks for 2 arguments
+    if len(sys.argv) != 2:
+        print("usage: grip-show <commit>:<filename>")
+        sys.exit(1)
+    
+    # Extracts the first argument and runs grip-show
+    argument = sys.argv[1]    
+    grip_show(argument)
